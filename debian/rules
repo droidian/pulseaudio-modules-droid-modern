@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+include /usr/share/dpkg/default.mk
+
+PA_MODULE_DIR := $$(readlink -f /usr/lib/pulse-*/modules)
+
+%:
+	dh $@ --with=autoreconf
+
+override_dh_auto_configure:
+	dh_auto_configure -- --disable-static --with-module-dir=${PA_MODULE_DIR}
+
+override_dh_autoreconf:
+	echo ${DEB_VERSION_UPSTREAM} > .tarball-version
+	dh_autoreconf
+
+override_dh_auto_clean:
+	if [ -f .tarball-version ]; then rm .tarball-version; fi
+	dh_auto_clean
+
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info -l/usr/lib/${DEB_HOST_MULTIARCH}/pulseaudio:/usr/lib/pulse-*/modules
+
+override_dh_auto_install:
+	dh_auto_install
+
+	rm debian/tmp/usr/lib/pulse-*/modules/*.la
+
+	install -d debian/tmp/usr/include/pulsecore/modules/droid
+	install -m 644 src/common/*.h debian/tmp/usr/include/pulsecore/modules/droid
+	install -d debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig
+	install -m 644 src/common/*.pc debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig
