@@ -1,7 +1,7 @@
 Source: pulseaudio-modules-droid
 Section: sound
 Priority: optional
-Build-Depends: android-headers (>= 23),
+Build-Depends: android-headers,
                check,
                debhelper (>= 11),
                dh-exec,
@@ -11,7 +11,6 @@ Build-Depends: android-headers (>= 23),
                libhybris-common-dev,
                libltdl-dev,
                libpulse-dev,
-               pulseaudio-dev,
                libexpat1-dev,
                libevdev-dev,
                libudev-dev
