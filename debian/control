@@ -21,12 +21,12 @@ Homepage: https://github.com/mer-hybris/pulseaudio-modules-droid
 Vcs-Git: https://gitlab.com/debian-pm/halium/pulseaudio-modules-droid.git
 Vcs-Browser: https://gitlab.com/debian-pm/halium/pulseaudio-modules-droid
 
-Package: pulseaudio-module-droid
+Package: pulseaudio-modules-droid
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: PulseAudio Droid HAL module.
 
-Package: pulseaudio-module-droid-dev
+Package: pulseaudio-modules-droid-dev
 Architecture: any
 Depends: pulseaudio-module-droid, ${misc:Depends}
 Description: PulseAudio Droid HAL module development headers.
