@@ -30,6 +30,7 @@
 #include <pulsecore/mutex.h>
 #include <pulsecore/strlist.h>
 #include <pulsecore/atomic.h>
+#include <pulsecore/modargs.h>
 
 #include <droid/version.h>
 #include <droid/droid-config.h>
@@ -49,6 +50,7 @@
 #define PROP_DROID_OUTPUT_OFFLOAD       "droid.output.offload"
 #define PROP_DROID_INPUT_BUILTIN        "droid.input.builtin"
 #define PROP_DROID_INPUT_EXTERNAL       "droid.input.external"
+#define PROP_DROID_INPUT_AUDIO_SOURCE   "droid.input.source"
 
 #define PA_DROID_PRIMARY_DEVICE     "primary"
 
@@ -67,6 +69,26 @@ typedef enum pa_droid_hook {
     PA_DROID_HOOK_MAX
 } pa_droid_hook_t;
 
+enum pa_droid_quirk_type {
+    QUIRK_INPUT_ATOI,
+    QUIRK_SET_PARAMETERS,
+    QUIRK_CLOSE_INPUT,
+    QUIRK_UNLOAD_NO_CLOSE,
+    QUIRK_NO_HW_VOLUME,
+    QUIRK_OUTPUT_MAKE_WRITABLE,
+    QUIRK_REALCALL,
+    QUIRK_UNLOAD_CALL_EXIT,
+    QUIRK_OUTPUT_FAST,
+    QUIRK_OUTPUT_DEEP_BUFFER,
+    QUIRK_AUDIO_CAL_WAIT,
+    QUIRK_STANDBY_SET_ROUTE,
+    QUIRK_SPEAKER_BEFORE_VOICE,
+    QUIRK_COUNT
+};
+
+struct pa_droid_quirks {
+    bool enabled[QUIRK_COUNT];
+};
 
 struct pa_droid_hw_module {
     PA_REFCNT_DECLARE;
@@ -95,7 +117,7 @@ struct pa_droid_hw_module {
 
     pa_atomic_t active_outputs;
 
-    pa_droid_quirks *quirks;
+    pa_droid_quirks quirks;
 
     /* Mode and input control */
     struct _state {
@@ -217,27 +239,12 @@ struct pa_droid_profile_set {
 #define PA_DROID_OUTPUT_PARKING "output-parking"
 #define PA_DROID_INPUT_PARKING "input-parking"
 
-enum pa_droid_quirk_type {
-    QUIRK_INPUT_ATOI,
-    QUIRK_SET_PARAMETERS,
-    QUIRK_CLOSE_INPUT,
-    QUIRK_UNLOAD_NO_CLOSE,
-    QUIRK_NO_HW_VOLUME,
-    QUIRK_OUTPUT_MAKE_WRITABLE,
-    QUIRK_REALCALL,
-    QUIRK_UNLOAD_CALL_EXIT,
-    QUIRK_OUTPUT_FAST,
-    QUIRK_OUTPUT_DEEP_BUFFER,
-    QUIRK_COUNT
-};
-
-struct pa_droid_quirks {
-    bool enabled[QUIRK_COUNT];
-};
-
 /* Open hardware module */
 /* 'config' can be NULL if it is assumed that hw module with module_id already is open. */
 pa_droid_hw_module *pa_droid_hw_module_get(pa_core *core, const pa_droid_config_audio *config, const char *module_id);
+/* First try to get already open hw module and if none found parse config and quirks from modargs
+ * and do initial open. */
+pa_droid_hw_module *pa_droid_hw_module_get2(pa_core *core, pa_modargs *ma, const char *module_id);
 pa_droid_hw_module *pa_droid_hw_module_ref(pa_droid_hw_module *hw);
 void pa_droid_hw_module_unref(pa_droid_hw_module *hw);
 
@@ -245,11 +252,11 @@ void pa_droid_hw_module_lock(pa_droid_hw_module *hw);
 bool pa_droid_hw_module_try_lock(pa_droid_hw_module *hw);
 void pa_droid_hw_module_unlock(pa_droid_hw_module *hw);
 
-bool pa_droid_quirk_parse(pa_droid_hw_module *hw, const char *quirks);
+bool pa_droid_quirk_parse(pa_droid_quirks *quirks, const char *quirks_def);
 void pa_droid_quirk_log(pa_droid_hw_module *hw);
 
 static inline bool pa_droid_quirk(pa_droid_hw_module *hw, enum pa_droid_quirk_type quirk) {
-    return hw->quirks && hw->quirks->enabled[quirk];
+    return hw && hw->quirks.enabled[quirk];
 }
 
 bool pa_droid_hw_set_mode(pa_droid_hw_module *hw_module, audio_mode_t mode);
@@ -312,9 +319,15 @@ int pa_droid_stream_set_route(pa_droid_stream *s, audio_devices_t device);
 pa_droid_stream *pa_droid_open_input_stream(pa_droid_hw_module *hw_module,
                                             const pa_sample_spec *default_sample_spec,
                                             const pa_channel_map *default_channel_map);
+/* Test if reconfiguring of input stream is needed */
+bool pa_droid_stream_reconfigure_input_needed(pa_droid_stream *s,
+                                              const pa_sample_spec *requested_sample_spec,
+                                              const pa_channel_map *requested_channel_map,
+                                              const pa_proplist *proplist);
 bool pa_droid_stream_reconfigure_input(pa_droid_stream *s,
                                        const pa_sample_spec *requested_sample_spec,
-                                       const pa_channel_map *requested_channel_map);
+                                       const pa_channel_map *requested_channel_map,
+                                       const pa_proplist *proplist);
 bool pa_droid_hw_set_input_device(pa_droid_hw_module *hw_module,
                                   audio_devices_t device);
 
