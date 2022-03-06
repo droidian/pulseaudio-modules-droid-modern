@@ -24,7 +24,8 @@ Vcs-Browser: https://github.com/droidian/pulseaudio-modules-droid-modern
 Package: pulseaudio-modules-droid-modern
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
-Conflicts: pulseaudio-modules-droid-jb2q
+Provides: pulseaudio-modules-droid-apispecific
+Conflicts: pulseaudio-modules-droid-apispecific
 Description: PulseAudio Droid HAL module
  Pulseaudio modules to interact with the Android HAL.
  .
@@ -34,7 +35,8 @@ Package: pulseaudio-modules-droid-modern-dev
 Architecture: any
 Depends: pulseaudio-modules-droid-modern (= ${binary:Version}),
          ${misc:Depends},
-Conflicts: pulseaudio-modules-droid-jb2q-dev
+Provides: pulseaudio-modules-droid-apispecific-dev
+Conflicts: pulseaudio-modules-droid-apispecific-dev
 Description: PulseAudio Droid HAL module - development headers
  Pulseaudio modules to interact with the Android HAL.
  .
