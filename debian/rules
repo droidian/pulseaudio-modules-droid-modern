@@ -25,4 +25,3 @@ override_dh_auto_install:
 	install -d debian/tmp/usr/include/pulsecore/modules/droid
 	install -m 644 src/common/*.h debian/tmp/usr/include/pulsecore/modules/droid
 	install -d debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig
-	install -m 644 src/common/*.pc debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig
