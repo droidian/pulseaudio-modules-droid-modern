@@ -67,6 +67,8 @@
 #include "droid-extcon.h"
 #include "droid-extevdev.h"
 
+#include <pulse/util.h>
+
 PA_MODULE_AUTHOR("Juho Hämäläinen");
 PA_MODULE_DESCRIPTION("Droid card");
 PA_MODULE_VERSION(PACKAGE_VERSION);
@@ -792,6 +794,7 @@ int pa__init(pa_module *m) {
     const char *module_id;
     bool namereg_fail = false;
     pa_card_profile *voicecall = NULL;
+    pa_card_profile *ringtone = NULL;
 
     pa_assert(m);
 
@@ -846,7 +849,7 @@ int pa__init(pa_module *m) {
 
     voicecall =
     add_virtual_profile(u, VOICE_CALL_PROFILE_NAME, VOICE_CALL_PROFILE_DESC,
-                        AUDIO_MODE_IN_CALL, voicecall_profile_event_cb,
+                        AUDIO_MODE_IN_CALL, NULL,
                         PA_AVAILABLE_YES, NULL, data.profiles);
     add_virtual_profile(u, VOICE_RECORD_PROFILE_NAME, VOICE_RECORD_PROFILE_DESC,
                         AUDIO_MODE_IN_CALL, NULL,
@@ -854,6 +857,7 @@ int pa__init(pa_module *m) {
     add_virtual_profile(u, COMMUNICATION_PROFILE_NAME, COMMUNICATION_PROFILE_DESC,
                         AUDIO_MODE_IN_COMMUNICATION, in_communication_profile_event_cb,
                         PA_AVAILABLE_YES, NULL, data.profiles);
+    ringtone = /* HACK for mimir */
     add_virtual_profile(u, RINGTONE_PROFILE_NAME, RINGTONE_PROFILE_DESC,
                         AUDIO_MODE_RINGTONE, NULL,
                         PA_AVAILABLE_YES, NULL, data.profiles);
@@ -907,6 +911,15 @@ int pa__init(pa_module *m) {
         u->extevdev = pa_droid_extevdev_new(m->core, u->card);
     else
         u->extevdev = NULL;
+
+    /* HACK for mimir */
+    pa_log("Setting ringtone profile");
+    card_set_profile(u->card, ringtone);
+    card_set_profile(u->card, ringtone);
+    card_set_profile(u->card, ringtone);
+    pa_log("Setting default profile back");
+    pa_msleep(2 * PA_MSEC_PER_SEC);
+    pa_card_choose_initial_profile(u->card);
 
     pa_card_put(u->card);
 
