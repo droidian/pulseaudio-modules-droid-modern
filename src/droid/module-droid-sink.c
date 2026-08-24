@@ -45,7 +45,7 @@ PA_MODULE_AUTHOR("Juho Hämäläinen");
 PA_MODULE_DESCRIPTION("Droid sink");
 PA_MODULE_USAGE("master_sink=<sink to connect to> "
                 "sink_name=<name of created sink>");
-PA_MODULE_VERSION(PACKAGE_VERSION);
+PA_MODULE_VERSION(PULSEAUDIO_PACKAGE_VERSION);
 
 static const char* const valid_modargs[] = {
     "config",
