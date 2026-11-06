@@ -399,6 +399,56 @@ static void add_profiles(struct userdata *u, pa_hashmap *h, pa_hashmap *ports) {
     }
 }
 
+static bool profile_is_virtual(pa_card_profile *cp) {
+    const struct profile_data *d = PA_CARD_PROFILE_DATA(cp);
+
+    return d->virtual_profile;
+}
+
+/* module-card-restore brings back the profile saved last, and that can be a
+ * virtual one: a call that was up when PulseAudio went down. A virtual profile
+ * only exists on top of the real profile it was entered from - it has no
+ * mappings of its own and u->real_profile is not set - so starting in one
+ * leaves the card without sinks and sources, and init_profile() aborts on the
+ * missing mapping sets. Start in the real profile PulseAudio would have picked
+ * instead, the way pa_card_choose_initial_profile() picks one; whoever runs
+ * the call sets the call mode again. */
+static void choose_real_initial_profile(struct userdata *u) {
+    pa_card_profile *cp, *best = NULL;
+    void *state;
+
+    pa_assert(u);
+
+    if (!profile_is_virtual(u->card->active_profile))
+        return;
+
+    PA_HASHMAP_FOREACH(cp, u->card->profiles, state) {
+        if (profile_is_virtual(cp) || cp->available == PA_AVAILABLE_NO)
+            continue;
+
+        if (!best || cp->priority > best->priority)
+            best = cp;
+    }
+
+    if (!best) {
+        PA_HASHMAP_FOREACH(cp, u->card->profiles, state) {
+            if (profile_is_virtual(cp))
+                continue;
+
+            if (!best || cp->priority > best->priority)
+                best = cp;
+        }
+    }
+
+    pa_assert(best);
+
+    pa_log_info("Not starting in virtual profile %s, using %s.", u->card->active_profile->name, best->name);
+
+    u->card->active_profile = best;
+    u->card->save_profile = false;
+    u->card->profile_is_sticky = false;
+}
+
 static void init_profile(struct userdata *u) {
     pa_droid_mapping *am;
     struct profile_data *d;
@@ -445,7 +495,7 @@ static void park_profile(pa_droid_profile *dp) {
 
     /* Virtual profiles don't have input mappings. */
     if ((am = dp->input_mapping)) {
-        if (pa_droid_mapping_is_primary(am))
+        if (pa_droid_mapping_is_primary(am) && am->source)
             pa_source_set_port(am->source, PA_DROID_INPUT_PARKING, false);
     };
 }
@@ -900,6 +950,7 @@ int pa__init(pa_module *m) {
     u->module = m;
 
     pa_card_choose_initial_profile(u->card);
+    choose_real_initial_profile(u);
     init_profile(u);
     u->extcon = pa_droid_extcon_new(m->core, u->card);
 
