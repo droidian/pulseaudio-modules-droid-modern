@@ -123,9 +123,11 @@ static void notify_ports(pa_droid_extcon *u, struct droid_switch *as) {
 
     PA_HASHMAP_FOREACH(p, u->card->ports, state) {
         if (p->direction == PA_DIRECTION_OUTPUT) {
-            if (!strcmp(p->name, "output-wired_headset"))
+            if (!strcmp(p->name, "output-wired_headset") ||
+                !strcmp(p->name, "output-speaker+wired_headset"))
                 pa_device_port_set_available(p, hsmic_avail(as->current_value));
-            if (!strcmp(p->name, "output-wired_headphone"))
+            if (!strcmp(p->name, "output-wired_headphone") ||
+                !strcmp(p->name, "output-speaker+wired_headphone"))
                 pa_device_port_set_available(p, hponly_avail(as->current_value));
         }
         if (p->direction == PA_DIRECTION_INPUT) {

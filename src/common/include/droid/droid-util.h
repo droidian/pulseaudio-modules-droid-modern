@@ -180,6 +180,9 @@ typedef struct pa_droid_port {
     char *name;
     char *description;
     unsigned priority;
+    /* Set for a port made up here rather than read from the configuration
+     * (speaker and wired at once): its device_port belongs to the port. */
+    dm_config_port *own_device_port;
 } pa_droid_port;
 
 struct pa_droid_mapping {

@@ -118,6 +118,7 @@ static const char *headphone_ports[] = {
 };
 
 static const char *headset_ports[] = {
+    "output-speaker+wired_headset",
     "output-wired_headset",
     "input-wired_headset",
 };
@@ -135,9 +136,13 @@ static void notify_ports(pa_droid_extevdev *u) {
             pa_device_port_set_available(p, has_headphone);
     }
 
+    /* A microphone switch on its own is a headset too: MediaTek's accdet
+     * reports a 4-pole plug as SW_MICROPHONE_INSERT alone, without
+     * SW_HEADPHONE_INSERT, and Android's WiredAccessoryManager maps that to
+     * BIT_HEADSET just like both bits together. Requiring the headphone bit
+     * as well meant a headset was never seen on those devices. */
     pa_available_t has_headset =
-        ((u->sw_headphone_insert || u->sw_lineout_insert)
-        && u->sw_microphone_insert) ? PA_AVAILABLE_YES : PA_AVAILABLE_NO;
+        u->sw_microphone_insert ? PA_AVAILABLE_YES : PA_AVAILABLE_NO;
 
     for (i=0; i < N_ELEMENTS(headset_ports); i++) {
         pa_device_port *p = pa_hashmap_get(u->card->ports, headset_ports[i]);

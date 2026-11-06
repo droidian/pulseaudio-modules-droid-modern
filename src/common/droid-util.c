@@ -132,6 +132,7 @@ static int input_stream_set_route(pa_droid_stream *stream, const dm_config_port 
 static int droid_set_parameters(pa_droid_hw_module *hw, const char *parameters);
 static bool droid_set_audio_source(pa_droid_stream *stream, audio_source_t audio_source);
 static void add_output_ports(pa_droid_mapping *droid_mapping, dm_config_port *device_port);
+static void add_combined_output_port(pa_droid_mapping *droid_mapping, audio_devices_t wired, const char *name);
 static void add_input_ports(pa_droid_mapping *droid_mapping, dm_config_port *device_port);
 static void audio_patch_release(pa_droid_stream *stream);
 
@@ -374,6 +375,10 @@ void pa_droid_profile_free(pa_droid_profile *ap) {
 static void droid_port_free(pa_droid_port *p) {
     pa_assert(p);
 
+    if (p->own_device_port) {
+        pa_xfree(p->own_device_port->name);
+        pa_xfree(p->own_device_port);
+    }
     pa_xfree(p->name);
     pa_xfree(p->description);
     pa_xfree(p);
@@ -440,6 +445,41 @@ static pa_droid_port *create_output_port(pa_droid_mapping *am,
     return p;
 }
 
+/* The loudspeaker and the jack at once, as Android rings with headphones in:
+ * the configuration has no such device port, so one is made from the two.
+ * Its priority is below the wired port's, so plugging in still switches to
+ * the headphones alone; it is only used when asked for by name. */
+static void add_combined_output_port(pa_droid_mapping *droid_mapping, audio_devices_t wired, const char *name) {
+    dm_config_port *device_port, *speaker = NULL, *jack = NULL, *combined;
+    pa_droid_port *port;
+    void *state;
+
+    DM_LIST_FOREACH_DATA(device_port, droid_mapping->device_ports, state) {
+        if (device_port->type == AUDIO_DEVICE_OUT_SPEAKER)
+            speaker = device_port;
+        else if (device_port->type == wired)
+            jack = device_port;
+    }
+
+    if (!speaker || !jack)
+        return;
+
+    if (!(port = pa_hashmap_get(droid_mapping->profile_set->all_ports, name))) {
+        combined = pa_xnew0(dm_config_port, 1);
+        *combined = *jack;
+        combined->name = pa_sprintf_malloc("%s+%s", speaker->name, jack->name);
+        combined->type = speaker->type | jack->type;
+
+        port = create_output_port(droid_mapping, combined, name, NULL);
+        port->own_device_port = combined;
+        port->priority = DEFAULT_PRIORITY / 2 + DEFAULT_PRIORITY / 4;
+        pa_hashmap_put(droid_mapping->profile_set->all_ports, port->name, port);
+        pa_log_debug("  Mapping %s add new output port %s", droid_mapping->name, name);
+    }
+
+    pa_idxset_put(droid_mapping->ports, port, NULL);
+}
+
 static void add_output_ports(pa_droid_mapping *droid_mapping, dm_config_port *device_port) {
     pa_droid_port *port;
     const char *name;
@@ -476,6 +516,9 @@ static void add_output_ports(pa_droid_mapping *droid_mapping, dm_config_port *de
         pa_log_debug("  Mapping %s add output port %s from cache", droid_mapping->name, name);
 
     pa_idxset_put(droid_mapping->ports, port, NULL);
+
+    add_combined_output_port(droid_mapping, AUDIO_DEVICE_OUT_WIRED_HEADPHONE, "output-speaker+wired_headphone");
+    add_combined_output_port(droid_mapping, AUDIO_DEVICE_OUT_WIRED_HEADSET, "output-speaker+wired_headset");
 }
 
 static pa_droid_port *create_input_port(pa_droid_mapping *am,
