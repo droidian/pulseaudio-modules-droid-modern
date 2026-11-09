@@ -60,3 +60,13 @@ module_sink = shared_module('module-droid-card',
   install_dir : modlibexecdir,
   install_rpath : rpath_dirs,
 )
+
+module_fm = shared_module('module-droid-fm',
+  'module-droid-fm.c',
+  name_prefix : '',
+  c_args : '-DPA_MODULE_NAME=module_droid_fm',
+  dependencies : [libdroid_util_dep],
+  install : true,
+  install_dir : modlibexecdir,
+  install_rpath : rpath_dirs,
+)

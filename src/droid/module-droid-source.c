@@ -44,7 +44,7 @@ PA_MODULE_AUTHOR("Juho Hämäläinen");
 PA_MODULE_DESCRIPTION("Droid source");
 PA_MODULE_USAGE("master_source=<source to connect to> "
                 "source_name=<name of created source>");
-PA_MODULE_VERSION(PACKAGE_VERSION);
+PA_MODULE_VERSION(PULSEAUDIO_PACKAGE_VERSION);
 
 static const char* const valid_modargs[] = {
     "config",
