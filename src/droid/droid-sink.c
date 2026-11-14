@@ -89,6 +89,7 @@ struct userdata {
     bool use_hw_volume;
     bool use_voice_volume;
     bool voice_virtual_stream;
+    bool linear_sound;
     char *voice_property_key;
     char *voice_property_value;
     pa_sink_input *voice_virtual_sink_input;
@@ -538,7 +539,10 @@ static void apply_volume(pa_sink *s) {
     /* So far every hal implementation doing volume control expects
      * both channels to have equal value, so we can just average the value
      * from all channels. */
-    val = pa_sw_volume_to_linear(pa_cvolume_avg(&r));
+    if (u->linear_sound)
+        val = (float) pa_cvolume_avg(&r) / PA_VOLUME_NORM;
+    else
+        val = pa_sw_volume_to_linear(pa_cvolume_avg(&r));
 
     pa_log_debug("Set %s volume -> %f", s->name, val);
     pa_droid_hw_module_lock(u->hw_module);
@@ -566,8 +570,10 @@ static void set_voice_volume(struct userdata *u, pa_sink_input *i) {
     pa_assert(i);
 
     pa_sink_input_get_volume(i, &vol, true);
-
-    val = pa_sw_volume_to_linear(pa_cvolume_avg(&vol));
+    if (u->linear_sound)
+        val = (float) pa_cvolume_avg(&vol) / PA_VOLUME_NORM;
+    else
+        val = pa_sw_volume_to_linear(pa_cvolume_avg(&vol));
     pa_log_debug("Set voice volume %f", val);
 
     pa_droid_hw_module_lock(u->hw_module);
@@ -927,6 +933,7 @@ pa_sink *pa_droid_sink_new(pa_module *m,
     dm_config_port *device_port = NULL;
     bool deferred_volume = false;
     bool voice_virtual_stream = false;
+    bool linear_sound = false;
     char *thread_name = NULL;
     pa_sink_new_data data;
     const char *module_id = NULL;
@@ -1018,6 +1025,11 @@ pa_sink *pa_droid_sink_new(pa_module *m,
         pa_log("Failed to parse voice_virtual_stream. Needs to be a boolean argument.");
         goto fail;
     }
+    
+    if (pa_modargs_get_value_boolean(ma, "linear_sound", &linear_sound) < 0) {
+        pa_log("Failed to parse linear_sound. Needs to be a boolean argument.");
+        goto fail;
+    }
 
     u = pa_xnew0(struct userdata, 1);
     u->core = m->core;
@@ -1029,6 +1041,7 @@ pa_sink *pa_droid_sink_new(pa_module *m,
     u->parameters = pa_hashmap_new_full(pa_idxset_string_hash_func, pa_idxset_string_compare_func,
                                         NULL, (pa_free_cb_t) parameter_free);
     u->voice_virtual_stream = voice_virtual_stream;
+    u->linear_sound = linear_sound;
     u->voice_property_key   = pa_xstrdup(pa_modargs_get_value(ma, "voice_property_key", DEFAULT_VOICE_CONTROL_PROPERTY_KEY));
     u->voice_property_value = pa_xstrdup(pa_modargs_get_value(ma, "voice_property_value", DEFAULT_VOICE_CONTROL_PROPERTY_VALUE));
     u->extra_devices_stack = dm_list_new();

@@ -308,6 +308,14 @@ Currently there are following options:
       HALs without create_audio_patch implemented, which causes pulse to 
       segfault attempting to use create_audio_patch on an invalid or null 
       address.
+* linear_sound
+    * Disabled by default.
+    * When enabled, uses a linear volume curve instead of PulseAudio's 
+      default cubic curve.
+      This is intended for devices whose audio HAL expects linear volume 
+      values and applies its own conversion to a logarithmic volume curve.
+      Can be enabled by adding `linear_sound=yes` to the `module-droid-card`
+      arguments in `arm_droid_card_custom.pa`.
 
 Options can be enabled or disabled normally as module arguments, for example:
 
